@@ -10,8 +10,8 @@ import numpy as np
 import glob
 import xmitgcm
 import xarray as xr
-from .inputs import adxx_it
-from .inputs import adj_dict
+from inputs import adxx_it
+from inputs import adj_dict
 import ecco_v4_py as ecco
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
@@ -21,7 +21,7 @@ class Experiment(object):
     '''
     Representation of specific MITgcm adjoint experiment run in ECCOv4
     '''
-    def __init__(self,grid_dir,exp_dir,start_date,lag0,deltat=3600):
+    def __init__(self,grid_dir,exp_dir,start_date,lag0,deltat=3600, itin_spec=None):
         '''
         Initialise Exp object based on user data
 
@@ -36,7 +36,10 @@ class Experiment(object):
         lag0 : string
             Lag 0 for cost function defined in *_maskT file
         deltat : int, default 3600
-            Time step of forward model in seconds. The default is 3600 (one day).        
+            Time step of forward model in seconds. The default is 3600 (one day). 
+        itin_spec: 1D numpy array, default None
+            Manual specification of timesteps for data. If = None, infer this from data format or 
+            its_data.txt in experiment folder.
 
         '''
         
@@ -51,7 +54,7 @@ class Experiment(object):
         
         # Generate various time dimensions
         self._find_results()
-        self.time_data=_get_time_data(self)
+        self.time_data=_get_time_data(self, itin_spec=itin_spec)
         
     def __repr__(self):
         out_str = '<xadjoint.Experiment> \n Directories: \n\t experiment = {} \n\t grid = {}'.format(self.exp_dir,self.grid_dir)     
@@ -425,14 +428,19 @@ class Experiment(object):
         
 
         
-def _get_time_data(self) :   
+def _get_time_data(self, itin_spec=None) :   
     
     tdata={}
-    try:
-        with open(self.exp_dir+'its_ad.txt') as f:
-            itin = f.readlines()
-    except:
-        itin = [int(os.path.basename(x).split('.')[-2]) for x in glob.glob(self.exp_dir+'{}.*.data'.format(self.ADJ_vars[0]))]
+
+    if itin_spec is None:
+        try:
+            with open(self.exp_dir+'its_ad.txt') as f:
+                itin = f.readlines()
+        except:
+            itin = [int(os.path.basename(x).split('.')[-2]) for x in glob.glob(self.exp_dir+'{}.*.data'.format(self.adxx_vars[0]))]
+    else:
+        itin = itin_spec
+        
     nits=len(itin)
     tdata['nits'] = nits   
     tdata['its'] = np.zeros(nits,dtype='int')
